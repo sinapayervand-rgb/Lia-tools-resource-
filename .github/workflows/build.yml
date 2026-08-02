@@ -31,7 +31,7 @@ jobs:
           unzip -o LiaTools_v1_source.zip -d source
           ls -la source
 
-      - name: Find project
+      - name: Find Gradle project
         run: |
           find source -name "settings.gradle*" -o -name "build.gradle*"
 
@@ -40,10 +40,16 @@ jobs:
           PROJECT=$(dirname "$(find source -name settings.gradle.kts -o -name settings.gradle | head -1)")
           echo "Building from: $PROJECT"
           cd "$PROJECT"
-          gradle assembleRelease
+          gradle assembleRelease || gradle assembleDebug
+
+      - name: Find APK files
+        run: |
+          echo "Searching for APK..."
+          find . -name "*.apk" -type f
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: LiaTools-APK
-          path: "**/build/outputs/apk/**/*.apk"
+          path: "**/*.apk"
+          if-no-files-found: error
