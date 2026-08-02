@@ -2,16 +2,19 @@ name: Build Lia Tools APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -20,18 +23,23 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Extract source
+      - name: Extract LiaTools source
         run: |
           unzip -o LiaTools_v1_source.zip -d source
 
-      - name: Locate Gradle wrapper
+      - name: Show files
         run: |
-          find source -name gradlew -type f
+          ls -R source | head -100
+
+      - name: Find Gradle project
+        run: |
+          find source -name "gradlew" -type f
 
       - name: Build APK
         run: |
-          PROJECT=$(dirname "$(find source -name gradlew -type f | head -1)")
-          cd "$PROJECT"
+          GRADLE_PATH=$(find source -name "gradlew" -type f | head -1)
+          PROJECT_DIR=$(dirname "$GRADLE_PATH")
+          cd "$PROJECT_DIR"
           chmod +x gradlew
           ./gradlew assembleRelease
 
@@ -39,4 +47,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LiaTools-APK
-          path: "**/build/outputs/apk/release/*.apk"
+          path: "**/build/outputs/apk/**/*.apk"
