@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup JDK 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -21,20 +21,28 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Extract project ZIP
+      - name: Extract LiaTools source
         run: |
-          unzip -o LiaTools_v1_source.zip -d project
+          unzip -o LiaTools_v1_source.zip -d source
 
-      - name: Find project folder
+      - name: Find Gradle project
         run: |
-          ls -la
-          find project -maxdepth 2 -type f -name "settings.gradle*" -o -name "build.gradle*"
+          echo "Searching project..."
+          find source -name "gradlew" -type f
 
       - name: Build APK
         run: |
-          cd project
+          PROJECT=$(dirname "$(find source -name gradlew -type f | head -1)")
+          echo "Project folder: $PROJECT"
+          cd "$PROJECT"
           chmod +x gradlew
           ./gradlew assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiaTools-APK
+          path: "**/build/outputs/apk/release/*.apk"          ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
