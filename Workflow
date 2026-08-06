@@ -1,0 +1,66 @@
+name: Build Lia Tools APK
+
+# Runs entirely on GitHub's servers — no local Android Studio, SDK, laptop,
+# or Gradle wrapper needed. This project has no gradlew/gradlew.bat/
+# gradle-wrapper.jar at all; Gradle is installed fresh on the runner by the
+# setup-gradle action below and invoked directly as `gradle`.
+#
+# Trigger manually from the Actions tab (or on every push) and download the
+# finished .apk from the run's "Artifacts" section — works fine from a phone
+# browser too.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.7
+
+      # --- Step 1 of the two-project architecture ---------------------------
+      # Build the WebView "shell" app once. See /docs/BUILD_AND_ARCHITECTURE.md
+      # for why Lia Tools needs a prebuilt shell instead of compiling on-device.
+      - name: Build shell template APK
+        working-directory: LiaTools-ShellTemplate
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Embed shell template into Lia Tools assets
+        run: |
+          mkdir -p LiaTools/app/src/main/assets/template
+          cp LiaTools-ShellTemplate/app/build/outputs/apk/release/app-release.apk \
+             LiaTools/app/src/main/assets/template/shell_template.apk
+          rm -f LiaTools/app/src/main/assets/template/README_PLACE_TEMPLATE_APK_HERE.txt
+          ls -la LiaTools/app/src/main/assets/template/
+
+      # --- Step 2 -------------------------------------------------------------
+      # Build the actual Lia Tools app. The release build type is signed with
+      # AGP's auto-generated debug keystore (see app/build.gradle.kts), so the
+      # output installs directly on a real device — no manual keystore needed.
+      - name: Build Lia Tools APK
+        working-directory: LiaTools
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiaTools-app-release
+          path: LiaTools/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
